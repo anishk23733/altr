@@ -15,7 +15,7 @@ Altr is a simple script that generates and places alternate text for images in a
     pip install git+https://github.com/openai/CLIP.git
     ```
 
-3. Download pretrained weights (conceptual_weights.pt) and place them in the weights directory.
+3. Download pretrained weights (conceptual_weights.pt) and place them in the weights directory. You can find the [COCO](https://drive.google.com/file/d/1IdaBtMSvtyzF0ByVaBHtvM0JYSXRExRX/view?usp=sharing) and [Conceptual Captions](https://drive.google.com/file/d/14pXWwB4Zm82rsDdvbGguLfx9F8aM7ovT/view?usp=sharing) pretrained models on Google Drive.
 
 4. Launch your environment with `conda activate understanding` or `source activate understanding`
 
