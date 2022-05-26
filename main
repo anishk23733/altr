@@ -1,0 +1,86 @@
+#! ~/anaconda3/envs/ml/bin/python
+import os
+import argparse
+print(">>> Altr <<<")
+print(">>> Loading models...")
+from caption_image import caption
+from bs4 import BeautifulSoup
+from pathlib import Path
+import shutil
+import requests
+import urllib
+from alive_progress import alive_bar
+
+parser = argparse.ArgumentParser(description='Altr for Websites')
+parser.add_argument('--src', '-s', default='demo/input', type=str, help='folder with website files')
+parser.add_argument('--dest' , '-d', type=str, default='demo/output', help="folder to output modified values")
+args = parser.parse_args()
+args = parser.parse_args()
+
+in_dir = args.src
+out_dir = args.dest
+
+captions = {}
+
+# Initial walkthrough — map image files to captions
+print(">>> Generating static asset captions...")
+total = sum([len([filename for filename in files if '.png' in filename or '.jpg' in filename]) for root, dirs, files in os.walk(in_dir)])
+with alive_bar(total) as bar:
+    for root, dirs, files in os.walk(in_dir):
+        for filename in files:
+            # For local images, generate captions
+            if '.png' in filename or '.jpg' in filename:
+                img_path = os.path.join(root, filename)
+                caption_text = caption(img_path)
+                captions[filename] = caption_text
+                bar()
+
+# Second walkthrough — add captions as alt text
+print(">>> Compiling output folder...")
+total = sum([len(files) for root, dirs, files in os.walk(in_dir)])
+with alive_bar(total) as bar:
+    for root, dirs, files in os.walk(in_dir):
+        new_root = root.replace(in_dir, out_dir)
+        Path(new_root).mkdir(parents=True, exist_ok=True)
+
+        for filename in files:
+            file_pth = os.path.join(root, filename)
+            new_file_pth = os.path.join(new_root, filename)
+
+            # Replace alt text for image files
+            if '.html' in filename:
+                with open(file_pth) as fp:
+                    soup = BeautifulSoup(fp, "html.parser")
+                    images = soup.find_all("img")
+                    for image in images:
+                        src = image.get('src')
+                        src = urllib.parse.unquote(src)
+
+                        # Check if this is a local file that we've generated a caption for
+                        caption_exists = False
+                        use_src = ""
+                        for key in captions:
+                            if key in src:
+                                caption_exists = True
+                                use_src = key
+                        
+                        if caption_exists:
+                            image['alt'] = captions[use_src]
+                        elif 'http' in src:
+                            img_data = requests.get(src, stream=True).raw
+                            try:
+                                caption_text = caption(img_data)
+                                captions[src] = caption_text
+                            except:
+                                captions[src] = "No caption found"
+                            image['alt'] = captions[src]
+                        else:
+                            captions[image.get('src')] = "No caption found"
+                            image['alt'] = 'No caption found'
+
+                with open(new_file_pth, "w") as file:
+                    file.write(str(soup))
+            # Copy over all other files
+            else:
+                shutil.copyfile(file_pth, new_file_pth)
+            bar()
